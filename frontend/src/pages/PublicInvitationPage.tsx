@@ -378,7 +378,10 @@ export default function PublicInvitationPage() {
             {/* Animated Mascot */}
             {event.mascot_id && (
               <div className="mb-8">
-                <AnimatedMascot mascotId={event.mascot_id} />
+                <AnimatedMascot
+                  mascotId={event.mascot_id}
+                  customImageUrl={event.mascot_custom_url}
+                />
               </div>
             )}
 

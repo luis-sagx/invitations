@@ -23,8 +23,12 @@ export interface EventInvitation {
   date: string
   time: string
   location: string
+  location_lat?: number
+  location_lng?: number
   description?: string
   cover_image_url?: string
+  mascot_id?: string
+  mascot_custom_url?: string
   template_id: string
   slug: string
   is_active: boolean

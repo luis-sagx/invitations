@@ -61,7 +61,11 @@ export function MascotPicker({
                   : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
-              <img src={m.image} alt={m.label} className="w-8 h-8 object-contain" />
+              <img
+                src={m.image}
+                alt={m.label}
+                className="w-8 h-8 object-contain"
+              />
               <span className="text-[10px] font-semibold text-slate-600">
                 {m.label}
               </span>

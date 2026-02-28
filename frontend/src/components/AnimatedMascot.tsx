@@ -50,6 +50,10 @@ export function AnimatedMascot({
 
   if (!mascot && !isCustom) return null
 
+  const imageUrl = isCustom ? customImageUrl : mascot?.image
+
+  if (!imageUrl) return null
+
   return (
     <div className="relative w-full h-16 overflow-hidden pointer-events-none select-none">
       <div
@@ -59,20 +63,11 @@ export function AnimatedMascot({
           transform: `scaleX(${direction === 'left' ? -1 : 1}) ${bounce ? 'translateY(-8px)' : 'translateY(0)'}`,
         }}
       >
-        {isCustom && customImageUrl ? (
-          <img
-            src={customImageUrl}
-            alt="Mascota"
-            className="w-10 h-10 object-contain drop-shadow-md"
-          />
-        ) : mascot ? (
-          <span
-            className={`material-symbols-outlined text-4xl ${mascot.color} drop-shadow-md`}
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            {mascot.icon}
-          </span>
-        ) : null}
+        <img
+          src={imageUrl}
+          alt="Mascota"
+          className="w-10 h-10 object-contain drop-shadow-md"
+        />
       </div>
       {/* Floor line */}
       <div className="absolute bottom-0 left-4 right-4 h-px bg-slate-200" />

@@ -53,15 +53,8 @@ const CATEGORY_THEMES: Record<
 export default function CreateEventPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const {
-    templates,
-    loadTemplates,
-    createEvent,
-    uploadCoverImage,
-    loading,
-    error,
-    clearError,
-  } = useEventStore()
+  const { templates, loadTemplates, createEvent, loading, error, clearError } =
+    useEventStore()
 
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<EventCategory | ''>('')
@@ -78,7 +71,6 @@ export default function CreateEventPage() {
   const [customMascotImage, setCustomMascotImage] = useState<string | null>(
     null,
   )
-  const [personalImage, setPersonalImage] = useState<File | null>(null)
   const [personalImagePreview, setPersonalImagePreview] = useState<
     string | null
   >(null)
@@ -108,12 +100,12 @@ export default function CreateEventPage() {
     const coverUrl =
       templates.find((t) => t.id === selectedTemplate)?.preview_image_url ?? ''
 
-    // Upload personal image if provided
-    let uploadedImageUrl: string | undefined
-    if (personalImage) {
-      const url = await uploadCoverImage(personalImage)
-      if (url) uploadedImageUrl = url
-    }
+    // Use personal image data URL if provided, otherwise template cover
+    const finalCoverUrl = personalImagePreview || coverUrl
+
+    // Custom mascot: store data URL directly
+    const mascotCustomUrl =
+      mascotId === 'custom' && customMascotImage ? customMascotImage : undefined
 
     const event = await createEvent({
       user_id: user.id,
@@ -126,8 +118,9 @@ export default function CreateEventPage() {
       location_lng: locationLng ?? undefined,
       description,
       template_id: selectedTemplate,
-      cover_image_url: uploadedImageUrl || coverUrl,
+      cover_image_url: finalCoverUrl,
       mascot_id: mascotId ?? undefined,
+      mascot_custom_url: mascotCustomUrl,
     })
 
     if (event) {
@@ -388,7 +381,6 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setPersonalImage(null)
                         setPersonalImagePreview(null)
                       }}
                       className="absolute top-2 right-2 bg-white/90 hover:bg-white text-slate-500 rounded-full p-1 shadow-md transition-colors"
@@ -416,7 +408,6 @@ export default function CreateEventPage() {
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) {
-                          setPersonalImage(file)
                           const reader = new FileReader()
                           reader.onloadend = () =>
                             setPersonalImagePreview(reader.result as string)

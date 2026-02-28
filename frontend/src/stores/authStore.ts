@@ -77,7 +77,38 @@ export const useAuthStore = create<AuthState>((set) => ({
         options: { data: { full_name: fullName } },
       })
       if (error) throw error
-      if (data.user) {
+
+      // If email confirmation is enabled and there's no session yet,
+      // the user exists but can't authenticate until they confirm.
+      if (data.user && !data.session) {
+        // Try auto-login (works when email confirmation is disabled in Supabase)
+        const { data: loginData, error: loginError } =
+          await supabase.auth.signInWithPassword({ email, password })
+        if (loginError) {
+          // Email confirmation is likely enabled
+          set({
+            error:
+              'Cuenta creada. Revisa tu correo electrónico para confirmar tu cuenta antes de iniciar sesión.',
+            loading: false,
+          })
+          return
+        }
+        if (loginData.user) {
+          set({
+            user: {
+              id: loginData.user.id,
+              email: loginData.user.email ?? '',
+              full_name: loginData.user.user_metadata?.full_name ?? fullName,
+              created_at: loginData.user.created_at,
+            },
+            loading: false,
+          })
+          return
+        }
+      }
+
+      // Session exists (email confirmation disabled) — user is logged in
+      if (data.user && data.session) {
         set({
           user: {
             id: data.user.id,
