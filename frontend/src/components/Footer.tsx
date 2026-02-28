@@ -2,7 +2,7 @@ export function Footer() {
   return (
     <footer className="mt-auto border-t border-border bg-surface px-6 py-8">
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-sm text-text-muted md:flex-row">
-        <p>&copy; 2024 EventFlow. Todos los derechos reservados.</p>
+        <p>&copy; 2024 EvenSAX. Todos los derechos reservados.</p>
         <div className="flex gap-6">
           <a className="hover:text-primary transition-colors" href="#">
             Privacidad
