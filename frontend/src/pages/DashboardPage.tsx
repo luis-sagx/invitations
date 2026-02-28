@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-
 import { Footer } from '@/components/Footer'
 import { useEventStore } from '@/stores/eventStore'
+import { useAuthStore } from '@/stores/authStore'
 import type { EventInvitation, Guest } from '@/types'
 
 const CATEGORY_STYLES: Record<
@@ -35,105 +35,6 @@ const AVATAR_COLORS = [
   { bg: 'bg-teal-100', text: 'text-teal-600' },
 ]
 
-// Demo data while Supabase isn't connected
-const DEMO_EVENTS: EventInvitation[] = [
-  {
-    id: '1',
-    user_id: 'demo',
-    title: 'Boda de María y Juan',
-    category: 'wedding',
-    date: '2023-10-15',
-    time: '18:00',
-    location: 'Hacienda San Miguel',
-    slug: 'boda-maria-juan',
-    template_id: 'classic-elegance',
-    is_active: true,
-    cover_image_url:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCCIiXUt2ZqzYvP9s58zJ2igmO9xCaU1EpTLOyOJ1yla5eHcWvrhWFpdP3prHdR8NN6ivJCR24q6T171-jAOThDQNZMQAKtaHWwldMEL10Kix8OfeyHpf_zkyr9k5o1zWIz7T_psDjhYUdcfF0xzP9i_vBf72XnbkjdrImXm2LBL8AqUJ57hxx0HsLWGKjYJaulF_mYxU0rQUft7gOjxkgiDgoesY4iehebKkJVHCZ_xxMvKQSGploz5a1riUORMQntrg8Y0Cwp2FJI',
-    created_at: '2023-09-01',
-    updated_at: '2023-09-01',
-  },
-  {
-    id: '2',
-    user_id: 'demo',
-    title: 'Cumpleaños 30 de Laura',
-    category: 'birthday',
-    date: '2023-11-20',
-    time: '20:00',
-    location: 'Rooftop Bar',
-    slug: 'cumple-laura-30',
-    template_id: 'neon-party',
-    is_active: true,
-    cover_image_url:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCewAMvSZVIttrSKdt-ojZjWoE4jYflY84U6yjeZyaSoP0hQd7ipjn9C513_41xe1zdqjZOTyHUs-EAT0ywXfUidN20yNjFdZvWvY8y104SwxWiy_OBqCCJMIaTkAlS0VZ9vxoiJEnJobHSN3adUQ01oId_jGu-dGRZRrrS4qJGPDZNU-zYCGF8Q8SniSrp9CUdLhkQHIYuwcoC-vOttEtQJ3uqTHMAgXsY2bf5uNRioTzHEAv5OkUcw4ZKG-dJzejuT2lVdL-HcspP',
-    created_at: '2023-09-15',
-    updated_at: '2023-09-15',
-  },
-  {
-    id: '3',
-    user_id: 'demo',
-    title: 'Lanzamiento de Producto 2024',
-    category: 'corporate',
-    date: '2023-12-05',
-    time: '09:00',
-    location: 'Centro de Convenciones',
-    slug: 'lanzamiento-producto-2024',
-    template_id: 'minimalist-dark',
-    is_active: true,
-    cover_image_url:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBMaWQo7aP6cdd7SN7np4HhKPZ9RitpTjEWE6FEshbfnuqvTm4ZBtmQVPrbaFOcnSazD4o2wW29MWZnOUr-q_N6vuazcKw6hKAFHgJgREXsL5bcKazjzXo_pEOkjiWB0XmndGgNrxuEf4G6PRNqeecHtAjQd1xNGWXl0ViD32vjcfY5FG3PXaCdfGa6LFIENJzSG2OfP9T-Y226dLZZxYVWmR9XsDYMCv1uDNJKwP9EpkMvPa7s3EHMT2F13twYjSKn5MOXM0Iyw5je',
-    created_at: '2023-10-01',
-    updated_at: '2023-10-01',
-  },
-]
-
-const DEMO_GUESTS: Record<string, Guest[]> = {
-  '1': [
-    {
-      id: 'g1',
-      event_id: '1',
-      full_name: 'Carlos Ruiz',
-      email: 'carlos.ruiz@example.com',
-      confirmed: true,
-      confirmed_at: '2023-09-12',
-      created_at: '2023-09-12',
-    },
-    {
-      id: 'g2',
-      event_id: '1',
-      full_name: 'Ana Gómez',
-      email: 'ana.gomez@example.com',
-      confirmed: true,
-      confirmed_at: '2023-09-13',
-      created_at: '2023-09-13',
-    },
-    {
-      id: 'g3',
-      event_id: '1',
-      full_name: 'Pedro Martínez',
-      email: 'pedro.mtz@example.com',
-      confirmed: true,
-      confirmed_at: '2023-09-14',
-      created_at: '2023-09-14',
-    },
-    {
-      id: 'g4',
-      event_id: '1',
-      full_name: 'Lucia Santos',
-      email: 'lucia.s@example.com',
-      confirmed: true,
-      confirmed_at: '2023-09-15',
-      created_at: '2023-09-15',
-    },
-  ],
-}
-
-const DEMO_CONFIRMED_COUNT: Record<string, number> = {
-  '1': 45,
-  '2': 12,
-  '3': 89,
-}
-
 function getInitials(name: string) {
   return name
     .split(' ')
@@ -152,27 +53,25 @@ function EventCard({
 }) {
   const [expanded, setExpanded] = useState(index === 0)
   const [guests, setGuests] = useState<Guest[]>([])
-  const { fetchGuestsByEvent, guests: storeGuests } = useEventStore()
+  const [copied, setCopied] = useState(false)
+  const {
+    fetchGuestsByEvent,
+    guests: storeGuests,
+    guestCounts,
+  } = useEventStore()
 
   const style = CATEGORY_STYLES[event.category] ?? CATEGORY_STYLES.other
   const confirmedCount =
-    DEMO_CONFIRMED_COUNT[event.id] ??
-    storeGuests.filter((g) => g.event_id === event.id && g.confirmed).length
+    guestCounts[event.id] ?? guests.filter((g) => g.confirmed).length
 
   useEffect(() => {
     if (expanded) {
-      if (DEMO_GUESTS[event.id]) {
-        setGuests(DEMO_GUESTS[event.id])
-      } else {
-        fetchGuestsByEvent(event.id)
-      }
+      fetchGuestsByEvent(event.id)
     }
   }, [expanded, event.id, fetchGuestsByEvent])
 
   useEffect(() => {
-    if (!DEMO_GUESTS[event.id]) {
-      setGuests(storeGuests.filter((g) => g.event_id === event.id))
-    }
+    setGuests(storeGuests.filter((g) => g.event_id === event.id))
   }, [storeGuests, event.id])
 
   const formatDate = (d: string) => {
@@ -196,6 +95,8 @@ function EventCard({
   const copyLink = () => {
     const url = `${window.location.origin}/e/${event.slug}`
     navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -266,12 +167,16 @@ function EventCard({
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
             <button
               onClick={copyLink}
-              className="inline-flex items-center gap-2 rounded-full bg-background px-4 py-2 text-sm font-semibold text-text hover:bg-gray-200 transition-colors"
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                copied
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-background text-text hover:bg-gray-200'
+              }`}
             >
               <span className="material-symbols-outlined text-[20px]">
-                content_copy
+                {copied ? 'check' : 'content_copy'}
               </span>
-              Copiar Enlace
+              {copied ? '¡Copiado!' : 'Copiar Enlace'}
             </button>
             <button
               onClick={() => setExpanded(!expanded)}
@@ -301,50 +206,48 @@ function EventCard({
                     <th className="px-6 py-4 font-semibold text-text">
                       Nombre del Invitado
                     </th>
-                    <th className="px-6 py-4 font-semibold text-text">Email</th>
                     <th className="px-6 py-4 font-semibold text-text text-right">
                       Fecha de Confirmación
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {guests.map((guest, gIdx) => {
-                    const colorIdx = gIdx % AVATAR_COLORS.length
-                    const color = AVATAR_COLORS[colorIdx]
-                    return (
-                      <tr
-                        key={guest.id}
-                        className="hover:bg-background transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`flex h-8 w-8 items-center justify-center rounded-full ${color.bg} ${color.text} font-bold text-xs`}
-                            >
-                              {getInitials(guest.full_name)}
+                  {guests
+                    .filter((g) => g.confirmed)
+                    .map((guest, gIdx) => {
+                      const colorIdx = gIdx % AVATAR_COLORS.length
+                      const color = AVATAR_COLORS[colorIdx]
+                      return (
+                        <tr
+                          key={guest.id}
+                          className="hover:bg-background transition-colors"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`flex h-8 w-8 items-center justify-center rounded-full ${color.bg} ${color.text} font-bold text-xs`}
+                              >
+                                {getInitials(guest.full_name)}
+                              </div>
+                              <span className="font-medium text-text">
+                                {guest.full_name}
+                              </span>
                             </div>
-                            <span className="font-medium text-text">
-                              {guest.full_name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-text-muted">
-                          {guest.email || '-'}
-                        </td>
-                        <td className="px-6 py-4 text-right text-text-muted">
-                          {guest.confirmed_at
-                            ? new Date(guest.confirmed_at).toLocaleDateString(
-                                'es-ES',
-                              )
-                            : '-'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {guests.length === 0 && (
+                          </td>
+                          <td className="px-6 py-4 text-right text-text-muted">
+                            {guest.confirmed_at
+                              ? new Date(guest.confirmed_at).toLocaleDateString(
+                                  'es-ES',
+                                )
+                              : '-'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  {guests.filter((g) => g.confirmed).length === 0 && (
                     <tr>
                       <td
-                        colSpan={3}
+                        colSpan={2}
                         className="px-6 py-8 text-center text-text-muted"
                       >
                         No hay invitados confirmados aún.
@@ -354,13 +257,6 @@ function EventCard({
                 </tbody>
               </table>
             </div>
-            {guests.length > 0 && (
-              <div className="bg-gray-50 px-6 py-3 border-t border-border flex justify-center">
-                <button className="text-sm font-medium text-primary hover:text-primary-dark transition-colors">
-                  Ver todos los invitados
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -370,21 +266,22 @@ function EventCard({
 
 export default function DashboardPage() {
   const { events, fetchEvents } = useEventStore()
+  const { user, logout } = useAuthStore()
   const [search, setSearch] = useState('')
 
   useEffect(() => {
     fetchEvents()
   }, [fetchEvents])
 
-  // Use demo events if no events from Supabase
-  const displayEvents = events.length > 0 ? events : DEMO_EVENTS
-  const activeCount = displayEvents.filter((e) => e.is_active).length
+  const activeCount = events.filter((e) => e.is_active).length
 
   const filtered = search
-    ? displayEvents.filter((e) =>
-        e.title.toLowerCase().includes(search.toLowerCase()),
-      )
-    : displayEvents
+    ? events.filter((e) => e.title.toLowerCase().includes(search.toLowerCase()))
+    : events
+
+  const handleLogout = async () => {
+    await logout()
+  }
 
   return (
     <div className="bg-background text-text min-h-screen flex flex-col antialiased">
@@ -399,7 +296,7 @@ export default function DashboardPage() {
               celebration
             </span>
             <h1 className="text-text text-xl font-bold tracking-tight">
-              Eventos
+              EvenSAX
             </h1>
           </Link>
           <div className="hidden md:flex w-full max-w-sm items-center rounded-xl bg-background px-4 py-2.5">
@@ -416,20 +313,6 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-6">
-          <nav className="hidden lg:flex items-center gap-6">
-            <Link
-              to="/dashboard"
-              className="text-sm font-medium text-text hover:text-primary transition-colors"
-            >
-              Dashboard
-            </Link>
-            <a
-              className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
-              href="#"
-            >
-              Configuración
-            </a>
-          </nav>
           <div className="flex items-center gap-4">
             <Link
               to="/create"
@@ -440,6 +323,16 @@ export default function DashboardPage() {
               </span>
               Crear Evento
             </Link>
+            <span className="hidden md:inline text-sm text-slate-600 font-medium">
+              {user?.full_name || user?.email}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-slate-500 hover:text-red-500 transition-colors font-medium"
+              title="Cerrar sesión"
+            >
+              <span className="material-symbols-outlined text-xl">logout</span>
+            </button>
           </div>
         </div>
       </header>
@@ -453,7 +346,7 @@ export default function DashboardPage() {
                 Mis Invitaciones
               </h2>
               <p className="text-text-muted text-lg">
-                Gestiona tus eventos activos y listas de invitados
+                Gestiona tus eventos y listas de invitados
               </p>
             </div>
             <div className="flex gap-3">
@@ -463,7 +356,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2 text-sm text-text-muted bg-white px-3 py-1.5 rounded-xl shadow-sm border border-border">
                 <span className="w-2 h-2 rounded-full bg-gray-400" />
-                {displayEvents.length - activeCount} Finalizado
+                {events.length - activeCount} Finalizado
               </div>
             </div>
           </div>
@@ -478,7 +371,22 @@ export default function DashboardPage() {
                 <span className="material-symbols-outlined text-5xl mb-4 block">
                   event_busy
                 </span>
-                <p className="text-lg">No se encontraron eventos</p>
+                <p className="text-lg">
+                  {events.length === 0
+                    ? 'Aún no has creado ningún evento.'
+                    : 'No se encontraron eventos'}
+                </p>
+                {events.length === 0 && (
+                  <Link
+                    to="/create"
+                    className="inline-flex items-center gap-2 mt-4 bg-primary text-white font-bold px-6 py-3 rounded-full hover:bg-primary-dark transition-colors shadow-lg shadow-primary/20"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      add
+                    </span>
+                    Crear tu primer evento
+                  </Link>
+                )}
               </div>
             )}
           </div>

@@ -2,6 +2,185 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { PublicHeader } from '@/components/Header'
 import { useEventStore } from '@/stores/eventStore'
+import { LocationMap } from '@/components/LocationMap'
+import { AnimatedMascot } from '@/components/AnimatedMascot'
+
+const CATEGORY_THEMES: Record<
+  string,
+  {
+    icon: string
+    label: string
+    accent: string
+    bg: string
+    gradient: string
+    decorations: { icon: string; pos: string; size: string; rotate: string }[]
+  }
+> = {
+  wedding: {
+    icon: 'favorite',
+    label: 'Boda',
+    accent: 'text-rose-600',
+    bg: 'bg-rose-50',
+    gradient: 'from-rose-400/30 to-pink-300/20',
+    decorations: [
+      {
+        icon: 'favorite',
+        pos: 'top-20 left-10',
+        size: 'text-6xl',
+        rotate: 'rotate-12',
+      },
+      {
+        icon: 'local_florist',
+        pos: 'top-40 right-16',
+        size: 'text-8xl',
+        rotate: '-rotate-12',
+      },
+      {
+        icon: 'favorite',
+        pos: 'bottom-40 left-16',
+        size: 'text-7xl',
+        rotate: 'rotate-45',
+      },
+    ],
+  },
+  birthday: {
+    icon: 'cake',
+    label: 'Cumpleaños',
+    accent: 'text-purple-600',
+    bg: 'bg-purple-50',
+    gradient: 'from-purple-400/30 to-indigo-300/20',
+    decorations: [
+      {
+        icon: 'cake',
+        pos: 'top-24 left-8',
+        size: 'text-6xl',
+        rotate: '-rotate-6',
+      },
+      {
+        icon: 'celebration',
+        pos: 'top-36 right-12',
+        size: 'text-8xl',
+        rotate: 'rotate-12',
+      },
+      {
+        icon: 'auto_awesome',
+        pos: 'bottom-44 left-20',
+        size: 'text-7xl',
+        rotate: 'rotate-45',
+      },
+    ],
+  },
+  corporate: {
+    icon: 'business_center',
+    label: 'Corporativo',
+    accent: 'text-blue-600',
+    bg: 'bg-blue-50',
+    gradient: 'from-blue-500/30 to-cyan-300/20',
+    decorations: [
+      {
+        icon: 'trending_up',
+        pos: 'top-20 left-8',
+        size: 'text-6xl',
+        rotate: '-rotate-12',
+      },
+      {
+        icon: 'handshake',
+        pos: 'top-44 right-16',
+        size: 'text-7xl',
+        rotate: 'rotate-6',
+      },
+      {
+        icon: 'business_center',
+        pos: 'bottom-40 left-16',
+        size: 'text-6xl',
+        rotate: 'rotate-12',
+      },
+    ],
+  },
+  graduation: {
+    icon: 'school',
+    label: 'Graduación',
+    accent: 'text-green-600',
+    bg: 'bg-green-50',
+    gradient: 'from-green-400/30 to-emerald-300/20',
+    decorations: [
+      {
+        icon: 'school',
+        pos: 'top-24 left-10',
+        size: 'text-6xl',
+        rotate: 'rotate-12',
+      },
+      {
+        icon: 'auto_awesome',
+        pos: 'top-40 right-14',
+        size: 'text-8xl',
+        rotate: '-rotate-12',
+      },
+      {
+        icon: 'military_tech',
+        pos: 'bottom-40 left-20',
+        size: 'text-7xl',
+        rotate: 'rotate-45',
+      },
+    ],
+  },
+  baptism: {
+    icon: 'water_drop',
+    label: 'Bautizo',
+    accent: 'text-sky-500',
+    bg: 'bg-sky-50',
+    gradient: 'from-sky-300/30 to-blue-200/20',
+    decorations: [
+      {
+        icon: 'water_drop',
+        pos: 'top-20 left-8',
+        size: 'text-6xl',
+        rotate: 'rotate-12',
+      },
+      {
+        icon: 'spa',
+        pos: 'top-44 right-14',
+        size: 'text-8xl',
+        rotate: '-rotate-6',
+      },
+      {
+        icon: 'church',
+        pos: 'bottom-40 left-16',
+        size: 'text-7xl',
+        rotate: 'rotate-30',
+      },
+    ],
+  },
+  social: {
+    icon: 'groups',
+    label: 'Social',
+    accent: 'text-amber-600',
+    bg: 'bg-amber-50',
+    gradient: 'from-amber-400/30 to-orange-300/20',
+    decorations: [
+      {
+        icon: 'local_bar',
+        pos: 'top-20 left-10',
+        size: 'text-6xl',
+        rotate: '-rotate-12',
+      },
+      {
+        icon: 'music_note',
+        pos: 'top-40 right-16',
+        size: 'text-8xl',
+        rotate: 'rotate-12',
+      },
+      {
+        icon: 'celebration',
+        pos: 'bottom-40 left-16',
+        size: 'text-7xl',
+        rotate: 'rotate-30',
+      },
+    ],
+  },
+}
+
+const DEFAULT_THEME = CATEGORY_THEMES.social
 
 export default function PublicInvitationPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -10,10 +189,11 @@ export default function PublicInvitationPage() {
   const [showModal, setShowModal] = useState(false)
   const [guestName, setGuestName] = useState('')
   const [confirmed, setConfirmed] = useState(false)
+  const [initialLoad, setInitialLoad] = useState(true)
 
   useEffect(() => {
     if (slug) {
-      fetchEventBySlug(slug)
+      fetchEventBySlug(slug).finally(() => setInitialLoad(false))
     }
   }, [slug, fetchEventBySlug])
 
@@ -27,29 +207,39 @@ export default function PublicInvitationPage() {
     }
   }
 
-  // Use demo data if no event loaded from Supabase
-  const event = currentEvent ?? {
-    title: 'Bautizo de Sofia',
-    category: 'baptism' as const,
-    date: '2024-10-24',
-    time: '10:00',
-    location: 'Parroquia San Francisco',
-    description:
-      'Con mucha alegría te invitamos a celebrar este momento tan especial en la vida de nuestra pequeña.',
-    cover_image_url:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBXl4ZQF4pSuhzdy7ai1hK2Yj6DBGYlHbQn17YR64V7nPguCGai-AXP0Mi9n74HzkoBUO7QazrGemd3dhfNMNWNVxX0tWdUot9xUTlLwfrBycZ-zMjZsrONWYwhf7bYkB-5QCQmVeSq3bVzG8I0Cjk9VLFr5yEhRPik7spxSahaCCZv6dntx4vETFGu3y2GaqeA4RFbl-K67LFSibAWvLMF5sJXD6mTnhq2QTlEsq7IyrqaYMjmIuKvzxUY869BsTqfPN1w21yXzvtC',
-    id: 'demo',
+  // Show loading while fetching OR during initial load
+  if (loading || initialLoad) {
+    return (
+      <div className="bg-background min-h-screen flex items-center justify-center">
+        <div className="text-center text-slate-500">
+          <span className="material-symbols-outlined text-5xl mb-4 block animate-spin">
+            progress_activity
+          </span>
+          <p>Cargando invitación...</p>
+        </div>
+      </div>
+    )
   }
 
-  const categoryLabels: Record<string, string> = {
-    wedding: 'Boda',
-    birthday: 'Cumpleaños',
-    corporate: 'Corporativo',
-    graduation: 'Graduación',
-    baptism: 'Bautizo',
-    social: 'Social',
-    other: 'Otro',
+  // Only show not-found AFTER loading is complete
+  if (!currentEvent) {
+    return (
+      <div className="bg-background min-h-screen flex items-center justify-center">
+        <div className="text-center text-slate-500">
+          <span className="material-symbols-outlined text-5xl mb-4 block">
+            event_busy
+          </span>
+          <p className="text-lg font-medium">Invitación no encontrada</p>
+          <p className="text-sm mt-2">
+            Este enlace puede no ser válido o el evento ya no está disponible.
+          </p>
+        </div>
+      </div>
+    )
   }
+
+  const event = currentEvent
+  const theme = CATEGORY_THEMES[event.category] ?? DEFAULT_THEME
 
   const formatDate = (dateStr: string) => {
     try {
@@ -75,27 +265,24 @@ export default function PublicInvitationPage() {
     }
   }
 
+  const hasCoords = event.location_lat != null && event.location_lng != null
+
   return (
     <div className="bg-background min-h-screen relative overflow-x-hidden text-slate-900 antialiased">
       <PublicHeader variant="public" />
 
       <main className="flex flex-col items-center justify-center w-full py-10 px-4 pb-24 md:pb-10 relative">
-        {/* Decorations */}
-        <div className="absolute top-20 left-10 text-primary/20 pointer-events-none select-none hidden lg:block">
-          <span className="material-symbols-outlined text-6xl rotate-12">
-            local_florist
-          </span>
-        </div>
-        <div className="absolute top-40 right-20 text-primary/10 pointer-events-none select-none hidden lg:block">
-          <span className="material-symbols-outlined text-8xl -rotate-12">
-            favorite
-          </span>
-        </div>
-        <div className="absolute bottom-40 left-20 text-primary/10 pointer-events-none select-none hidden lg:block">
-          <span className="material-symbols-outlined text-7xl rotate-45">
-            star
-          </span>
-        </div>
+        {/* Category-specific decorations */}
+        {theme.decorations.map((d, i) => (
+          <div
+            key={i}
+            className={`absolute ${d.pos} opacity-10 pointer-events-none select-none hidden lg:block ${theme.accent}`}
+          >
+            <span className={`material-symbols-outlined ${d.size} ${d.rotate}`}>
+              {d.icon}
+            </span>
+          </div>
+        ))}
 
         {/* Invitation Card */}
         <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative z-10">
@@ -105,9 +292,14 @@ export default function PublicInvitationPage() {
               className="absolute inset-0 bg-cover bg-center"
               style={{ backgroundImage: `url('${event.cover_image_url}')` }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
-              <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/30">
-                {categoryLabels[event.category] || event.category}
+            <div
+              className={`absolute inset-0 bg-gradient-to-t ${theme.gradient} to-transparent flex items-end p-8`}
+            >
+              <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/30 inline-flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">
+                  {theme.icon}
+                </span>
+                {theme.label}
               </span>
             </div>
           </div>
@@ -116,14 +308,21 @@ export default function PublicInvitationPage() {
             <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
               {event.title}
             </h1>
-            <p className="text-lg text-slate-600 max-w-lg mx-auto mb-8 font-medium">
-              {event.description}
-            </p>
+
+            {event.description && (
+              <p className="text-lg text-slate-600 max-w-lg mx-auto mb-8 font-medium">
+                {event.description}
+              </p>
+            )}
 
             {/* Event Info Grid */}
             <div className="grid md:grid-cols-3 gap-6 mb-10 text-left md:text-center">
-              <div className="flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl bg-slate-50">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <div
+                className={`flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl ${theme.bg}`}
+              >
+                <div
+                  className={`size-10 rounded-full ${theme.bg} flex items-center justify-center ${theme.accent} shrink-0`}
+                >
                   <span className="material-symbols-outlined">
                     calendar_month
                   </span>
@@ -135,8 +334,12 @@ export default function PublicInvitationPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl bg-slate-50">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <div
+                className={`flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl ${theme.bg}`}
+              >
+                <div
+                  className={`size-10 rounded-full ${theme.bg} flex items-center justify-center ${theme.accent} shrink-0`}
+                >
                   <span className="material-symbols-outlined">schedule</span>
                 </div>
                 <div>
@@ -146,8 +349,12 @@ export default function PublicInvitationPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl bg-slate-50">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <div
+                className={`flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl ${theme.bg}`}
+              >
+                <div
+                  className={`size-10 rounded-full ${theme.bg} flex items-center justify-center ${theme.accent} shrink-0`}
+                >
                   <span className="material-symbols-outlined">location_on</span>
                 </div>
                 <div>
@@ -157,26 +364,23 @@ export default function PublicInvitationPage() {
               </div>
             </div>
 
-            {/* Map placeholder */}
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-8 border border-slate-200">
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{
-                  backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuDOAZp32OMr1defLGjcYXXmPOnPocoIGdve-XfWxg69x7znLPECVFmqrQaFm4fdprGRAF9Bk92X2CrQ-78qoJw4-ixPysiV0to36sLStuCyCIBOZ9MqYkmEs1PyZklWcduvIktDGzDkBErGgAadaOpGBA-n60o6vZeOKMKllZ7YypIXfe0y_PJsjYUwNNxbi7RXc5CIg4g1yvBMKqLGjNrgiZ30Uvf3wkucp_1gF4DFQrwqoVRsgHydUfB6aX6T_pY8LMBjFhXOfbiV')`,
-                }}
-              />
-              <div className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-sm">
-                  directions
-                </span>
-                Ver Mapa
+            {/* Map - only show when coordinates exist */}
+            {hasCoords && (
+              <div className="mb-10">
+                <LocationMap
+                  lat={event.location_lat!}
+                  lng={event.location_lng!}
+                  locationName={event.location}
+                />
               </div>
-            </div>
+            )}
 
-            <p className="text-slate-600 italic mb-10">
-              "Te esperamos para compartir un almuerzo después de la ceremonia
-              en el Jardín Los Olivos."
-            </p>
+            {/* Animated Mascot */}
+            {event.mascot_id && (
+              <div className="mb-8">
+                <AnimatedMascot mascotId={event.mascot_id} />
+              </div>
+            )}
 
             {/* Desktop CTA */}
             <div className="hidden md:block">
@@ -221,9 +425,11 @@ export default function PublicInvitationPage() {
             </button>
 
             <div className="text-center mb-6">
-              <div className="mx-auto size-12 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4">
+              <div
+                className={`mx-auto size-12 rounded-full flex items-center justify-center mb-4 ${theme.bg} ${theme.accent}`}
+              >
                 <span className="material-symbols-outlined text-2xl">
-                  {confirmed ? 'check_circle' : 'check_circle'}
+                  {confirmed ? 'check_circle' : theme.icon}
                 </span>
               </div>
               <h3 className="text-2xl font-bold text-slate-900">

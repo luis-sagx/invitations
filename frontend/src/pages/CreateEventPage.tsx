@@ -3,20 +3,85 @@ import { useNavigate } from 'react-router-dom'
 import { AppHeader } from '@/components/Header'
 import { useEventStore } from '@/stores/eventStore'
 import { useAuthStore } from '@/stores/authStore'
+import { MascotPicker } from '@/components/MascotPicker'
+import { LocationPicker } from '@/components/LocationMap'
+import { AnimatedMascot } from '@/components/AnimatedMascot'
 import type { EventCategory } from '@/types'
+
+const CATEGORY_THEMES: Record<
+  string,
+  { icon: string; accent: string; gradient: string; label: string }
+> = {
+  wedding: {
+    icon: 'favorite',
+    accent: 'text-rose-600',
+    gradient: 'from-rose-400/30 to-pink-300/20',
+    label: 'Boda',
+  },
+  birthday: {
+    icon: 'cake',
+    accent: 'text-purple-600',
+    gradient: 'from-purple-400/30 to-indigo-300/20',
+    label: 'Cumpleaños',
+  },
+  corporate: {
+    icon: 'business_center',
+    accent: 'text-blue-600',
+    gradient: 'from-blue-500/30 to-cyan-300/20',
+    label: 'Corporativo',
+  },
+  graduation: {
+    icon: 'school',
+    accent: 'text-green-600',
+    gradient: 'from-green-400/30 to-emerald-300/20',
+    label: 'Graduación',
+  },
+  baptism: {
+    icon: 'water_drop',
+    accent: 'text-sky-600',
+    gradient: 'from-sky-300/30 to-blue-200/20',
+    label: 'Bautizo',
+  },
+  social: {
+    icon: 'groups',
+    accent: 'text-amber-600',
+    gradient: 'from-amber-400/30 to-orange-300/20',
+    label: 'Social',
+  },
+}
 
 export default function CreateEventPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const { templates, loadTemplates, createEvent, loading } = useEventStore()
+  const {
+    templates,
+    loadTemplates,
+    createEvent,
+    uploadCoverImage,
+    loading,
+    error,
+    clearError,
+  } = useEventStore()
 
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<EventCategory | ''>('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [location, setLocation] = useState('')
+  const [locationLat, setLocationLat] = useState<number | null>(null)
+  const [locationLng, setLocationLng] = useState<number | null>(null)
   const [description, setDescription] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState('classic-elegance')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [mascotId, setMascotId] = useState<string | null>(null)
+  const [customMascotImage, setCustomMascotImage] = useState<string | null>(
+    null,
+  )
+  const [personalImage, setPersonalImage] = useState<File | null>(null)
+  const [personalImagePreview, setPersonalImagePreview] = useState<
+    string | null
+  >(null)
 
   useEffect(() => {
     loadTemplates()
@@ -24,7 +89,31 @@ export default function CreateEventPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user || !category) return
+    setFormError(null)
+    clearError()
+
+    if (!user) {
+      setFormError('Debes iniciar sesión para crear un evento.')
+      return
+    }
+    if (!category) {
+      setFormError('Selecciona una categoría para el evento.')
+      return
+    }
+    if (!title || !date || !time || !location) {
+      setFormError('Completa todos los campos obligatorios.')
+      return
+    }
+
+    const coverUrl =
+      templates.find((t) => t.id === selectedTemplate)?.preview_image_url ?? ''
+
+    // Upload personal image if provided
+    let uploadedImageUrl: string | undefined
+    if (personalImage) {
+      const url = await uploadCoverImage(personalImage)
+      if (url) uploadedImageUrl = url
+    }
 
     const event = await createEvent({
       user_id: user.id,
@@ -33,15 +122,50 @@ export default function CreateEventPage() {
       date,
       time,
       location,
+      location_lat: locationLat ?? undefined,
+      location_lng: locationLng ?? undefined,
       description,
       template_id: selectedTemplate,
-      cover_image_url: templates.find((t) => t.id === selectedTemplate)
-        ?.preview_image_url,
+      cover_image_url: uploadedImageUrl || coverUrl,
+      mascot_id: mascotId ?? undefined,
     })
 
     if (event) {
       navigate('/dashboard')
     }
+  }
+
+  const formatDatePreview = (d: string) => {
+    if (!d) return 'Fecha del evento'
+    try {
+      return new Date(d + 'T00:00:00').toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      })
+    } catch {
+      return d
+    }
+  }
+
+  const formatTimePreview = (t: string) => {
+    if (!t) return 'Hora'
+    const [h, m] = t.split(':')
+    const hour = parseInt(h)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${m} ${ampm}`
+  }
+
+  const catTheme = category
+    ? (CATEGORY_THEMES[category] ?? CATEGORY_THEMES.social)
+    : null
+
+  const resolvedCoverUrl = () => {
+    if (personalImagePreview) return personalImagePreview
+    return (
+      templates.find((t) => t.id === selectedTemplate)?.preview_image_url ?? ''
+    )
   }
 
   return (
@@ -63,9 +187,17 @@ export default function CreateEventPage() {
             </div>
 
             <form
+              id="create-event-form"
               onSubmit={handleSubmit}
               className="flex flex-col gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
             >
+              {/* Error display */}
+              {(formError || error) && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {formError || error}
+                </div>
+              )}
+
               {/* Event Name */}
               <div className="flex flex-col gap-2">
                 <label
@@ -197,6 +329,21 @@ export default function CreateEventPage() {
                 </div>
               </div>
 
+              {/* Location Map Picker */}
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-bold text-slate-700">
+                  Ubicación en el Mapa (opcional)
+                </span>
+                <LocationPicker
+                  lat={locationLat}
+                  lng={locationLng}
+                  onLocationChange={(lat, lng) => {
+                    setLocationLat(lat)
+                    setLocationLng(lng)
+                  }}
+                />
+              </div>
+
               {/* Description */}
               <div className="flex flex-col gap-2">
                 <label
@@ -215,25 +362,70 @@ export default function CreateEventPage() {
                 />
               </div>
 
-              {/* Upload Image */}
-              <div className="flex flex-col gap-2 pt-2">
+              {/* Mascot Picker */}
+              <MascotPicker
+                selected={mascotId}
+                customImage={customMascotImage}
+                onSelect={setMascotId}
+                onCustomImage={setCustomMascotImage}
+              />
+
+              {/* Personal Image Upload */}
+              <div className="flex flex-col gap-2">
                 <span className="text-sm font-bold text-slate-700">
-                  Imagen de Portada
+                  Imagen Personalizada (opcional)
                 </span>
-                <label className="group flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-primary hover:bg-slate-50 transition-all">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <span className="material-symbols-outlined text-3xl text-slate-400 group-hover:text-primary mb-2 transition-colors">
-                      cloud_upload
-                    </span>
-                    <p className="text-sm text-slate-500">
-                      <span className="font-bold text-primary">
-                        Clic para subir
-                      </span>{' '}
-                      o arrastra y suelta
-                    </p>
+                <p className="text-xs text-slate-400">
+                  Sube una imagen que aparecerá como portada de tu invitación
+                </p>
+                {personalImagePreview ? (
+                  <div className="relative w-full aspect-[21/9] rounded-xl overflow-hidden border border-slate-200">
+                    <img
+                      src={personalImagePreview}
+                      alt="Vista previa"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPersonalImage(null)
+                        setPersonalImagePreview(null)
+                      }}
+                      className="absolute top-2 right-2 bg-white/90 hover:bg-white text-slate-500 rounded-full p-1 shadow-md transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        close
+                      </span>
+                    </button>
                   </div>
-                  <input type="file" className="hidden" accept="image/*" />
-                </label>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-slate-300 hover:border-primary hover:bg-slate-50 cursor-pointer transition-all">
+                    <span className="material-symbols-outlined text-3xl text-slate-400">
+                      add_photo_alternate
+                    </span>
+                    <span className="text-sm font-medium text-slate-500">
+                      Haz clic para subir una imagen
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      JPG, PNG o WebP
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          setPersonalImage(file)
+                          const reader = new FileReader()
+                          reader.onloadend = () =>
+                            setPersonalImagePreview(reader.result as string)
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                    />
+                  </label>
+                )}
               </div>
             </form>
           </div>
@@ -244,8 +436,16 @@ export default function CreateEventPage() {
               <h3 className="text-xl font-bold text-slate-900">
                 Elige una Plantilla
               </h3>
-              <button className="text-primary text-sm font-bold hover:underline">
-                Ver Todas
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                disabled={!title}
+                className="inline-flex items-center gap-1.5 text-primary text-sm font-bold hover:underline disabled:opacity-40 disabled:no-underline"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  visibility
+                </span>
+                Vista Previa
               </button>
             </div>
 
@@ -324,12 +524,18 @@ export default function CreateEventPage() {
             <div className="flex w-full sm:w-auto gap-4">
               <button
                 type="button"
-                className="flex-1 sm:flex-none px-6 py-3.5 rounded-full border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                onClick={() => setShowPreview(true)}
+                disabled={!title}
+                className="flex-1 sm:flex-none px-6 py-3.5 rounded-full border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
               >
-                Guardar Borrador
+                <span className="material-symbols-outlined text-xl">
+                  visibility
+                </span>
+                Vista Previa
               </button>
               <button
-                onClick={handleSubmit}
+                type="submit"
+                form="create-event-form"
                 disabled={loading}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-primary text-white font-bold shadow-lg shadow-primary/40 hover:bg-blue-700 transition-all hover:scale-105 disabled:opacity-60"
               >
@@ -343,6 +549,118 @@ export default function CreateEventPage() {
         </div>
         <div className="h-24 lg:hidden" />
       </main>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setShowPreview(false)}
+          />
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-slate-100">
+            <button
+              onClick={() => setShowPreview(false)}
+              className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white text-slate-500 rounded-full p-1.5 shadow-md transition-colors"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+
+            {/* Preview Card */}
+            <div className="w-full aspect-[21/9] bg-slate-200 relative overflow-hidden">
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url('${resolvedCoverUrl()}')` }}
+              />
+              <div
+                className={`absolute inset-0 bg-gradient-to-t ${catTheme?.gradient ?? 'from-black/30 to-transparent'} flex items-end p-8`}
+              >
+                {catTheme && (
+                  <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/30 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">
+                      {catTheme.icon}
+                    </span>
+                    {catTheme.label}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-8 text-center">
+              <h2 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">
+                {title || 'Nombre del Evento'}
+              </h2>
+              {description && (
+                <p className="text-slate-600 max-w-md mx-auto mb-6 font-medium">
+                  {description}
+                </p>
+              )}
+
+              <div className="grid grid-cols-3 gap-4 mb-8 text-center">
+                <div className="p-3 rounded-xl bg-slate-50">
+                  <div
+                    className={`size-8 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2 ${catTheme?.accent ?? 'text-primary'}`}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      calendar_month
+                    </span>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">Fecha</p>
+                  <p className="text-xs text-slate-500 capitalize">
+                    {formatDatePreview(date)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50">
+                  <div
+                    className={`size-8 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2 ${catTheme?.accent ?? 'text-primary'}`}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      schedule
+                    </span>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">Hora</p>
+                  <p className="text-xs text-slate-500">
+                    {formatTimePreview(time)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50">
+                  <div
+                    className={`size-8 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2 ${catTheme?.accent ?? 'text-primary'}`}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      location_on
+                    </span>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">Lugar</p>
+                  <p className="text-xs text-slate-500">
+                    {location || 'Ubicación'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mascot preview */}
+              {mascotId && (
+                <div className="mb-6">
+                  <AnimatedMascot
+                    mascotId={mascotId}
+                    customImageUrl={customMascotImage ?? undefined}
+                  />
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="bg-primary text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-primary/30 text-base cursor-default"
+              >
+                CONFIRMAR ASISTENCIA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
