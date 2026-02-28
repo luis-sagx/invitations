@@ -24,8 +24,15 @@ interface EventState {
       location_lng?: number
       mascot_id?: string
       mascot_custom_url?: string
+      custom_color?: string
+      personal_image_url?: string
     },
   ) => Promise<EventInvitation | null>
+  updateEvent: (
+    id: string,
+    updates: Partial<Omit<EventInvitation, 'id' | 'created_at' | 'slug'>>,
+  ) => Promise<EventInvitation | null>
+  deleteEvent: (id: string) => Promise<boolean>
   uploadCoverImage: (file: File) => Promise<string | null>
   confirmGuest: (
     eventId: string,
@@ -191,6 +198,46 @@ export const useEventStore = create<EventState>((set, get) => ({
     } catch (err) {
       set({ error: (err as Error).message, loading: false })
       return null
+    }
+  },
+
+  updateEvent: async (id, updates) => {
+    set({ loading: true, error: null })
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      set((state) => ({
+        events: state.events.map((e) => (e.id === id ? data : e)),
+        loading: false,
+      }))
+      return data
+    } catch (err) {
+      set({ error: (err as Error).message, loading: false })
+      return null
+    }
+  },
+
+  deleteEvent: async (id) => {
+    set({ loading: true, error: null })
+    try {
+      // Delete guests first (foreign key)
+      await supabase.from('guests').delete().eq('event_id', id)
+      const { error } = await supabase.from('events').delete().eq('id', id)
+      if (error) throw error
+      set((state) => ({
+        events: state.events.filter((e) => e.id !== id),
+        loading: false,
+      }))
+      return true
+    } catch (err) {
+      set({ error: (err as Error).message, loading: false })
+      return false
     }
   },
 

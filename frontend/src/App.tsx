@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
 import CreateEventPage from '@/pages/CreateEventPage'
+import EditEventPage from '@/pages/EditEventPage'
 import PublicInvitationPage from '@/pages/PublicInvitationPage'
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/create" element={<CreateEventPage />} />
+          <Route path="/edit/:id" element={<EditEventPage />} />
         </Route>
 
         {/* Fallback */}

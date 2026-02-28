@@ -5,7 +5,7 @@ interface PublicHeaderProps {
   variant?: 'login' | 'public'
 }
 
-export function PublicHeader({ variant = 'public' }: PublicHeaderProps) {
+export function PublicHeader(_props: PublicHeaderProps) {
   return (
     <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 bg-white px-6 lg:px-10 py-4 shadow-sm z-10 sticky top-0">
       <Link to="/" className="flex items-center gap-4">
@@ -18,18 +18,6 @@ export function PublicHeader({ variant = 'public' }: PublicHeaderProps) {
           EvenSAX
         </h2>
       </Link>
-      <div className="flex flex-1 justify-end gap-8">
-        {variant === 'public' && (
-          <div className="flex items-center gap-4">
-            <Link
-              to="/login"
-              className="flex items-center justify-center overflow-hidden rounded-full h-10 px-6 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-bold transition-colors"
-            >
-              Iniciar Sesión
-            </Link>
-          </div>
-        )}
-      </div>
     </header>
   )
 }

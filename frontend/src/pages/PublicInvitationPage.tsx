@@ -240,6 +240,8 @@ export default function PublicInvitationPage() {
 
   const event = currentEvent
   const theme = CATEGORY_THEMES[event.category] ?? DEFAULT_THEME
+  const accentColor = event.custom_color || '#3b82f6'
+  const templateUrl = event.cover_image_url || ''
 
   const formatDate = (dateStr: string) => {
     try {
@@ -276,7 +278,8 @@ export default function PublicInvitationPage() {
         {theme.decorations.map((d, i) => (
           <div
             key={i}
-            className={`absolute ${d.pos} opacity-10 pointer-events-none select-none hidden lg:block ${theme.accent}`}
+            className={`absolute ${d.pos} opacity-10 pointer-events-none select-none hidden lg:block`}
+            style={{ color: accentColor }}
           >
             <span className={`material-symbols-outlined ${d.size} ${d.rotate}`}>
               {d.icon}
@@ -288,14 +291,24 @@ export default function PublicInvitationPage() {
         <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative z-10">
           {/* Hero Image */}
           <div className="w-full aspect-[21/9] bg-slate-200 relative overflow-hidden">
+            {/* Template image: blurred bg when personal image exists, normal otherwise */}
             <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url('${event.cover_image_url}')` }}
+              className={`absolute inset-0 bg-cover bg-center ${event.personal_image_url ? 'blur-sm scale-105 opacity-60' : ''}`}
+              style={{ backgroundImage: `url('${templateUrl}')` }}
             />
-            <div
-              className={`absolute inset-0 bg-gradient-to-t ${theme.gradient} to-transparent flex items-end p-8`}
-            >
-              <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/30 inline-flex items-center gap-1.5">
+            {/* Personal image on top (shown clearly) */}
+            {event.personal_image_url && (
+              <img
+                src={event.personal_image_url}
+                alt="Imagen del evento"
+                className="absolute inset-0 w-full h-full object-cover z-[1]"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end p-8 z-[2]">
+              <span
+                className="px-4 py-1 rounded-full backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/30 inline-flex items-center gap-1.5"
+                style={{ backgroundColor: `${accentColor}99` }}
+              >
                 <span className="material-symbols-outlined text-sm">
                   {theme.icon}
                 </span>
@@ -318,10 +331,15 @@ export default function PublicInvitationPage() {
             {/* Event Info Grid */}
             <div className="grid md:grid-cols-3 gap-6 mb-10 text-left md:text-center">
               <div
-                className={`flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl ${theme.bg}`}
+                className="flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl"
+                style={{ backgroundColor: `${accentColor}10` }}
               >
                 <div
-                  className={`size-10 rounded-full ${theme.bg} flex items-center justify-center ${theme.accent} shrink-0`}
+                  className="size-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor: `${accentColor}20`,
+                    color: accentColor,
+                  }}
                 >
                   <span className="material-symbols-outlined">
                     calendar_month
@@ -335,10 +353,15 @@ export default function PublicInvitationPage() {
                 </div>
               </div>
               <div
-                className={`flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl ${theme.bg}`}
+                className="flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl"
+                style={{ backgroundColor: `${accentColor}10` }}
               >
                 <div
-                  className={`size-10 rounded-full ${theme.bg} flex items-center justify-center ${theme.accent} shrink-0`}
+                  className="size-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor: `${accentColor}20`,
+                    color: accentColor,
+                  }}
                 >
                   <span className="material-symbols-outlined">schedule</span>
                 </div>
@@ -350,10 +373,15 @@ export default function PublicInvitationPage() {
                 </div>
               </div>
               <div
-                className={`flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl ${theme.bg}`}
+                className="flex flex-row md:flex-col items-center md:justify-center gap-4 p-4 rounded-2xl"
+                style={{ backgroundColor: `${accentColor}10` }}
               >
                 <div
-                  className={`size-10 rounded-full ${theme.bg} flex items-center justify-center ${theme.accent} shrink-0`}
+                  className="size-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor: `${accentColor}20`,
+                    color: accentColor,
+                  }}
                 >
                   <span className="material-symbols-outlined">location_on</span>
                 </div>
@@ -389,7 +417,11 @@ export default function PublicInvitationPage() {
             <div className="hidden md:block">
               <button
                 onClick={() => setShowModal(true)}
-                className="bg-primary hover:bg-primary/90 text-white font-bold py-4 px-10 rounded-full shadow-lg shadow-primary/30 transition-all hover:scale-105 active:scale-95 text-lg w-full max-w-sm"
+                className="text-white font-bold py-4 px-10 rounded-full transition-all hover:scale-105 active:scale-95 text-lg w-full max-w-sm"
+                style={{
+                  backgroundColor: accentColor,
+                  boxShadow: `0 10px 15px -3px ${accentColor}40`,
+                }}
               >
                 CONFIRMAR ASISTENCIA
               </button>
@@ -402,7 +434,11 @@ export default function PublicInvitationPage() {
       <div className="fixed bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur border-t border-slate-200 md:hidden z-30">
         <button
           onClick={() => setShowModal(true)}
-          className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-6 rounded-full shadow-lg shadow-primary/30"
+          className="w-full text-white font-bold py-3 px-6 rounded-full"
+          style={{
+            backgroundColor: accentColor,
+            boxShadow: `0 10px 15px -3px ${accentColor}40`,
+          }}
         >
           CONFIRMAR ASISTENCIA
         </button>
@@ -429,7 +465,11 @@ export default function PublicInvitationPage() {
 
             <div className="text-center mb-6">
               <div
-                className={`mx-auto size-12 rounded-full flex items-center justify-center mb-4 ${theme.bg} ${theme.accent}`}
+                className="mx-auto size-12 rounded-full flex items-center justify-center mb-4"
+                style={{
+                  backgroundColor: `${accentColor}20`,
+                  color: accentColor,
+                }}
               >
                 <span className="material-symbols-outlined text-2xl">
                   {confirmed ? 'check_circle' : theme.icon}
@@ -468,7 +508,11 @@ export default function PublicInvitationPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-4 rounded-full shadow-lg shadow-primary/20 transition-transform active:scale-95 disabled:opacity-60"
+                    className="w-full text-white font-bold py-3 px-4 rounded-full transition-transform active:scale-95 disabled:opacity-60"
+                    style={{
+                      backgroundColor: accentColor,
+                      boxShadow: `0 10px 15px -3px ${accentColor}30`,
+                    }}
                   >
                     {loading ? 'Confirmando...' : 'Confirmar'}
                   </button>

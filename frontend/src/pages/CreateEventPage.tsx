@@ -8,6 +8,65 @@ import { LocationPicker } from '@/components/LocationMap'
 import { AnimatedMascot } from '@/components/AnimatedMascot'
 import type { EventCategory } from '@/types'
 
+const COLOR_OPTIONS = [
+  {
+    id: 'blue',
+    label: 'Azul',
+    value: '#3b82f6',
+    bg: 'bg-blue-500',
+    ring: 'ring-blue-500',
+  },
+  {
+    id: 'purple',
+    label: 'Morado',
+    value: '#8b5cf6',
+    bg: 'bg-purple-500',
+    ring: 'ring-purple-500',
+  },
+  {
+    id: 'rose',
+    label: 'Rosa',
+    value: '#f43f5e',
+    bg: 'bg-rose-500',
+    ring: 'ring-rose-500',
+  },
+  {
+    id: 'amber',
+    label: 'Ámbar',
+    value: '#f59e0b',
+    bg: 'bg-amber-500',
+    ring: 'ring-amber-500',
+  },
+  {
+    id: 'green',
+    label: 'Verde',
+    value: '#22c55e',
+    bg: 'bg-green-500',
+    ring: 'ring-green-500',
+  },
+  {
+    id: 'teal',
+    label: 'Turquesa',
+    value: '#14b8a6',
+    bg: 'bg-teal-500',
+    ring: 'ring-teal-500',
+  },
+  {
+    id: 'orange',
+    label: 'Naranja',
+    value: '#f97316',
+    bg: 'bg-orange-500',
+    ring: 'ring-orange-500',
+  },
+  {
+    id: 'sky',
+    label: 'Celeste',
+    value: '#0ea5e9',
+    bg: 'bg-sky-500',
+    ring: 'ring-sky-500',
+  },
+]
+
 const CATEGORY_THEMES: Record<
   string,
   { icon: string; accent: string; gradient: string; label: string }
@@ -74,6 +133,7 @@ export default function CreateEventPage() {
   const [personalImagePreview, setPersonalImagePreview] = useState<
     string | null
   >(null)
+  const [customColor, setCustomColor] = useState('blue')
 
   useEffect(() => {
     loadTemplates()
@@ -100,12 +160,12 @@ export default function CreateEventPage() {
     const coverUrl =
       templates.find((t) => t.id === selectedTemplate)?.preview_image_url ?? ''
 
-    // Use personal image data URL if provided, otherwise template cover
-    const finalCoverUrl = personalImagePreview || coverUrl
-
     // Custom mascot: store data URL directly
     const mascotCustomUrl =
       mascotId === 'custom' && customMascotImage ? customMascotImage : undefined
+
+    const selectedColor =
+      COLOR_OPTIONS.find((c) => c.id === customColor)?.value ?? '#3b82f6'
 
     const event = await createEvent({
       user_id: user.id,
@@ -118,9 +178,11 @@ export default function CreateEventPage() {
       location_lng: locationLng ?? undefined,
       description,
       template_id: selectedTemplate,
-      cover_image_url: finalCoverUrl,
+      cover_image_url: coverUrl,
+      personal_image_url: personalImagePreview ?? undefined,
       mascot_id: mascotId ?? undefined,
       mascot_custom_url: mascotCustomUrl,
+      custom_color: selectedColor,
     })
 
     if (event) {
@@ -154,12 +216,10 @@ export default function CreateEventPage() {
     ? (CATEGORY_THEMES[category] ?? CATEGORY_THEMES.social)
     : null
 
-  const resolvedCoverUrl = () => {
-    if (personalImagePreview) return personalImagePreview
-    return (
-      templates.find((t) => t.id === selectedTemplate)?.preview_image_url ?? ''
-    )
-  }
+  const selectedColorHex =
+    COLOR_OPTIONS.find((c) => c.id === customColor)?.value ?? '#3b82f6'
+  const templateUrl =
+    templates.find((t) => t.id === selectedTemplate)?.preview_image_url ?? ''
 
   return (
     <div className="bg-background min-h-screen flex flex-col text-slate-900 antialiased">
@@ -363,6 +423,31 @@ export default function CreateEventPage() {
                 onCustomImage={setCustomMascotImage}
               />
 
+              {/* Color Picker */}
+              <div className="flex flex-col gap-3">
+                <span className="text-sm font-bold text-slate-700">
+                  Color del Tema
+                </span>
+                <p className="text-xs text-slate-400">
+                  Elige el color principal de tu invitación
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {COLOR_OPTIONS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCustomColor(c.id)}
+                      title={c.label}
+                      className={`w-10 h-10 rounded-full transition-all ${c.bg} ${
+                        customColor === c.id
+                          ? `ring-4 ${c.ring} ring-offset-2 scale-110`
+                          : 'hover:scale-110'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
               {/* Personal Image Upload */}
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-bold text-slate-700">
@@ -562,13 +647,20 @@ export default function CreateEventPage() {
 
             {/* Preview Card */}
             <div className="w-full aspect-[21/9] bg-slate-200 relative overflow-hidden">
+              {/* Template image: blurred bg when personal image exists, normal otherwise */}
               <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url('${resolvedCoverUrl()}')` }}
+                className={`absolute inset-0 bg-cover bg-center ${personalImagePreview ? 'blur-sm scale-105 opacity-60' : ''}`}
+                style={{ backgroundImage: `url('${templateUrl}')` }}
               />
-              <div
-                className={`absolute inset-0 bg-gradient-to-t ${catTheme?.gradient ?? 'from-black/30 to-transparent'} flex items-end p-8`}
-              >
+              {/* Personal image on top (shown clearly) */}
+              {personalImagePreview && (
+                <img
+                  src={personalImagePreview}
+                  alt="Imagen personal"
+                  className="absolute inset-0 w-full h-full object-cover z-[1]"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end p-8 z-[2]">
                 {catTheme && (
                   <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/30 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm">
@@ -593,7 +685,11 @@ export default function CreateEventPage() {
               <div className="grid grid-cols-3 gap-4 mb-8 text-center">
                 <div className="p-3 rounded-xl bg-slate-50">
                   <div
-                    className={`size-8 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2 ${catTheme?.accent ?? 'text-primary'}`}
+                    className="size-8 mx-auto rounded-full flex items-center justify-center mb-2"
+                    style={{
+                      backgroundColor: `${selectedColorHex}20`,
+                      color: selectedColorHex,
+                    }}
                   >
                     <span className="material-symbols-outlined text-lg">
                       calendar_month
@@ -606,7 +702,11 @@ export default function CreateEventPage() {
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50">
                   <div
-                    className={`size-8 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2 ${catTheme?.accent ?? 'text-primary'}`}
+                    className="size-8 mx-auto rounded-full flex items-center justify-center mb-2"
+                    style={{
+                      backgroundColor: `${selectedColorHex}20`,
+                      color: selectedColorHex,
+                    }}
                   >
                     <span className="material-symbols-outlined text-lg">
                       schedule
@@ -619,7 +719,11 @@ export default function CreateEventPage() {
                 </div>
                 <div className="p-3 rounded-xl bg-slate-50">
                   <div
-                    className={`size-8 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2 ${catTheme?.accent ?? 'text-primary'}`}
+                    className="size-8 mx-auto rounded-full flex items-center justify-center mb-2"
+                    style={{
+                      backgroundColor: `${selectedColorHex}20`,
+                      color: selectedColorHex,
+                    }}
                   >
                     <span className="material-symbols-outlined text-lg">
                       location_on
@@ -644,7 +748,11 @@ export default function CreateEventPage() {
 
               <button
                 type="button"
-                className="bg-primary text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-primary/30 text-base cursor-default"
+                className="text-white font-bold py-3 px-8 rounded-full text-base cursor-default"
+                style={{
+                  backgroundColor: selectedColorHex,
+                  boxShadow: `0 10px 15px -3px ${selectedColorHex}40`,
+                }}
               >
                 CONFIRMAR ASISTENCIA
               </button>

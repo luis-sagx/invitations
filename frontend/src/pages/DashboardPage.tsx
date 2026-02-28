@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
 import { useEventStore } from '@/stores/eventStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -54,10 +54,13 @@ function EventCard({
   const [expanded, setExpanded] = useState(index === 0)
   const [guests, setGuests] = useState<Guest[]>([])
   const [copied, setCopied] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const navigate = useNavigate()
   const {
     fetchGuestsByEvent,
     guests: storeGuests,
     guestCounts,
+    deleteEvent,
   } = useEventStore()
 
   const style = CATEGORY_STYLES[event.category] ?? CATEGORY_STYLES.other
@@ -165,19 +168,39 @@ function EventCard({
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
-            <button
-              onClick={copyLink}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
-                copied
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-background text-text hover:bg-gray-200'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[20px]">
-                {copied ? 'check' : 'content_copy'}
-              </span>
-              {copied ? '¡Copiado!' : 'Copiar Enlace'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={copyLink}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                  copied
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-background text-text hover:bg-gray-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {copied ? 'check' : 'content_copy'}
+                </span>
+                {copied ? '¡Copiado!' : 'Copiar Enlace'}
+              </button>
+              <button
+                onClick={() => navigate(`/edit/${event.id}`)}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-background text-text hover:bg-gray-200 transition-all"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  edit
+                </span>
+                Editar
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  delete
+                </span>
+                Eliminar
+              </button>
+            </div>
             <button
               onClick={() => setExpanded(!expanded)}
               className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold transition-all ${
@@ -256,6 +279,54 @@ function EventCard({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setShowDeleteModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 md:p-8 border border-slate-100">
+            <div className="text-center mb-6">
+              <div className="mx-auto size-14 rounded-full flex items-center justify-center mb-4 bg-red-100 text-red-600">
+                <span className="material-symbols-outlined text-3xl">
+                  warning
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">
+                ¿Eliminar evento?
+              </h3>
+              <p className="text-slate-500 mt-2 text-sm">
+                Esta acción no se puede deshacer. Se eliminarán el evento{' '}
+                <strong className="text-slate-700">{event.title}</strong> y
+                todos los invitados asociados.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 py-3 rounded-full border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteEvent(event.id)
+                  setShowDeleteModal(false)
+                }}
+                className="flex-1 py-3 rounded-full bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+              >
+                Eliminar
+              </button>
             </div>
           </div>
         </div>

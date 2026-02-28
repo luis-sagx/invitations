@@ -27,8 +27,10 @@ export interface EventInvitation {
   location_lng?: number
   description?: string
   cover_image_url?: string
+  personal_image_url?: string
   mascot_id?: string
   mascot_custom_url?: string
+  custom_color?: string
   template_id: string
   slug: string
   is_active: boolean
